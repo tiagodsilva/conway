@@ -14,5 +14,14 @@ python visualize.py -n 20 -d 0.1 -f animation  # saves GIF to figures/
 **Gliders**
 ![Gliders](figures/gliders.gif)
 
-**Blinker** | **Toad** | **Beacon** | **Pulsar**
-![Blinker](figures/blinker.gif) ![Toad](figures/toad.gif) ![Beacon](figures/beacon.gif) ![Pulsar](figures/pulsar.gif)
+**Blinker**
+![Blinker](figures/blinker.gif)
+
+**Toad**
+![Toad](figures/toad.gif)
+
+**Beacon**
+![Beacon](figures/beacon.gif)
+
+**Pulsar**
+![Pulsar](figures/pulsar.gif)
