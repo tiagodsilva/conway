@@ -44,7 +44,7 @@ def render_frame(og: OG, max_coord: int, offset: torch.Tensor | None = None) -> 
 
 
 def frame_to_image(
-    og: OG, max_coord: int, offset: torch.Tensor | None = None
+    og: OG, max_coord: int, offset: torch.Tensor | None = None, pixel_size: int = 8
 ) -> np.ndarray:
     if og.nodes.numel() == 0:
         return np.zeros((2 * max_coord + 1, 2 * max_coord + 1), dtype=np.uint8)
@@ -66,7 +66,8 @@ def frame_to_image(
         )
         rows.append(row)
 
-    return np.array(rows, dtype=np.uint8)
+    grid = np.array(rows, dtype=np.uint8)
+    return np.kron(grid, np.ones((pixel_size, pixel_size), dtype=np.uint8))
 
 
 GLIDERS = "0,0 1,1 2,-1 2,0 2,1 10,5 11,6 12,4 12,5 12,6 20,10 21,11 22,9 22,10 22,11"
