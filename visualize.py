@@ -10,7 +10,7 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
-from main import BG, OG, evolve, get_border
+from conway import BG, OG, evolve, get_border
 
 app = typer.Typer()
 console = Console()
@@ -20,7 +20,9 @@ DEAD_CHAR = "\u00b7"
 PADDING = 2
 
 
-def render_frame(og: OG, max_coord: int, offset: torch.Tensor | None = None) -> Text:
+def render_frame(
+    og: OG, max_coord: int, offset: torch.Tensor | None = None
+) -> Text:
     if og.nodes.numel() == 0:
         return Text("Empty grid", style="bold red")
 
@@ -43,7 +45,10 @@ def render_frame(og: OG, max_coord: int, offset: torch.Tensor | None = None) -> 
 
 
 def frame_to_image(
-    og: OG, max_coord: int, offset: torch.Tensor | None = None, pixel_size: int = 12
+    og: OG,
+    max_coord: int,
+    offset: torch.Tensor | None = None,
+    pixel_size: int = 12,
 ) -> np.ndarray:
     if og.nodes.numel() == 0:
         return np.zeros((2 * max_coord + 1, 2 * max_coord + 1), dtype=np.uint8)
@@ -97,7 +102,11 @@ def main(
     ),
 ) -> None:
     seed_nodes = torch.tensor(
-        [[int(x), int(y)] for pair in seed.split() for x, y in [pair.split(",")]]
+        [
+            [int(x), int(y)]
+            for pair in seed.split()
+            for x, y in [pair.split(",")]
+        ]
     )
 
     og = OG(nodes=seed_nodes)

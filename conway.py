@@ -83,7 +83,7 @@ def evolve(og: OG, bg: BG):
     n_neigh_og = count_neighbors(og.nodes, og.nodes)
     should_die = (n_neigh_og < 2) | (n_neigh_og > 3)
 
-    # Third rule: the other nodes survive
+    # Second rule: the other nodes survive
     remaining_nodes = torch.vstack([og.nodes[~should_die], nodes_born])
 
     # Update the bg
