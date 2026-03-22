@@ -1,0 +1,148 @@
+import os
+import time
+from dataclasses import replace
+
+import imageio.v2 as imageio
+import numpy as np
+import torch
+import typer
+from rich.console import Console
+from rich.live import Live
+from rich.panel import Panel
+from rich.text import Text
+
+from main import BG, OG, evolve, get_border
+
+app = typer.Typer()
+console = Console()
+
+ALIVE_CHAR = "O"
+DEAD_CHAR = "\u00b7"
+PADDING = 2
+
+
+def render_frame(og: OG, max_coord: int, offset: torch.Tensor | None = None) -> Text:
+    if og.nodes.numel() == 0:
+        return Text("Empty grid", style="bold red")
+
+    if offset is None:
+        center = og.nodes.float().mean(dim=0)
+        offset = torch.round(center).to(torch.int64)
+
+    alive_set = {tuple(node.tolist()) for node in (og.nodes - offset)}
+
+    rows = []
+    for y in range(max_coord - 1, -max_coord, -1):
+        row = "".join(
+            ALIVE_CHAR if (x, y) in alive_set else DEAD_CHAR
+            for x in range(-max_coord, max_coord + 1)
+        )
+        rows.append(row)
+
+    grid_text = "\n".join(rows)
+    return Text(grid_text, style="bold green")
+
+
+def frame_to_image(
+    og: OG, max_coord: int, offset: torch.Tensor | None = None
+) -> np.ndarray:
+    if og.nodes.numel() == 0:
+        return np.zeros((2 * max_coord + 1, 2 * max_coord + 1), dtype=np.uint8)
+
+    if offset is None:
+        center = og.nodes.float().mean(dim=0)
+        offset = torch.round(center).to(torch.int64)
+
+    alive_set = {tuple(node.tolist()) for node in (og.nodes - offset)}
+
+    rows = []
+    for y in range(max_coord - 1, -max_coord, -1):
+        row = np.array(
+            [
+                255 if (x, y) in alive_set else 0
+                for x in range(-max_coord, max_coord + 1)
+            ],
+            dtype=np.uint8,
+        )
+        rows.append(row)
+
+    return np.array(rows, dtype=np.uint8)
+
+
+GLIDERS = "0,0 1,1 2,-1 2,0 2,1 10,5 11,6 12,4 12,5 12,6 20,10 21,11 22,9 22,10 22,11"
+
+
+@app.command()
+def main(
+    seed: str = typer.Option(
+        GLIDERS,
+        "--seed",
+        "-s",
+        help="Comma-separated coordinate pairs (x,y format)",
+    ),
+    iterations: int = typer.Option(
+        2**31 - 1,
+        "--iterations",
+        "-n",
+        help="Number of iterations (default: run forever)",
+    ),
+    delay: float = typer.Option(
+        0.1, "--delay", "-d", help="Delay between iterations (seconds)"
+    ),
+    grid_size: int = typer.Option(
+        20, "--grid-size", "-g", help="Half-size of visible grid"
+    ),
+    gif: str | None = typer.Option(
+        None, "--gif", "-f", help="Filename to save GIF (saved in figures/)"
+    ),
+) -> None:
+    seed_nodes = torch.tensor(
+        [[int(x), int(y)] for pair in seed.split() for x, y in [pair.split(",")]]
+    )
+
+    og = OG(nodes=seed_nodes)
+    bg = BG(nodes=get_border(og))
+
+    center = seed_nodes.float().mean(dim=0)
+    offset = torch.round(center).to(torch.int64)
+
+    frames: list = []
+    if gif:
+        os.makedirs("figures", exist_ok=True)
+        frames.append(frame_to_image(og, grid_size, offset))
+
+    with Live(
+        Panel(
+            render_frame(og, grid_size, offset),
+            title="Conway's Game of Life",
+            border_style="blue",
+        ),
+        console=console,
+        refresh_per_second=10,
+        transient=False,
+    ) as live:
+        for i in range(iterations):
+            og, bg = evolve(og, bg)
+            if gif:
+                frames.append(frame_to_image(og, grid_size, offset))
+            live.update(
+                Panel(
+                    render_frame(og, grid_size, offset),
+                    title=f"Conway's Game of Life (iter {i + 1})",
+                    border_style="blue",
+                )
+            )
+            time.sleep(delay)
+
+    if gif:
+        path = os.path.join("figures", gif)
+        if not gif.endswith(".gif"):
+            path += ".gif"
+        imageio.mimsave(path, frames, fps=int(1 / delay))
+        console.print(f"[bold green]GIF saved to {path}[/bold green]")
+
+
+if __name__ == "__main__":
+    app()
+
+# Built by OpenCode
