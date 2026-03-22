@@ -32,37 +32,42 @@ class BG:
     nodes: torch.Tensor  # (N, 2)
 
 
-def count_neighbors(new_nodes: torch.Tensor, curr_nodes: torch.Tensor):
-    # This function should not be Jitted, as the shape of nodes' will change.
-    distance = torch.abs(
-        new_nodes[:, None, ...] - curr_nodes[None, ...]
-    )  # (K, N, 2)
-    distance = distance.max(dim=2)  # (K, N)
-    distance = distance.values
-    return distance.sum(dim=1)  # (K,)
+def count_neighbors(
+    new_nodes: torch.Tensor, curr_nodes: torch.Tensor
+) -> torch.Tensor:
+    distance = torch.abs(new_nodes[:, None, ...] - curr_nodes[None, ...])
+    is_neighbor = (distance <= 1).all(dim=2)
+    is_self = (distance == 0).all(dim=2)
+    return (is_neighbor & ~is_self).sum(dim=1)
 
 
 def get_border(og: OG):
-    e1 = torch.tensor([1, 0])
-    e2 = torch.tensor([0, 1])
-    ed = e1 + e2
-
-    candidates = torch.vstack(
+    offsets = torch.tensor(
         [
-            og.nodes + e1[None, ...],
-            og.nodes + e2[None, ...],
-            og.nodes + ed[None, ...],
-            og.nodes - e1[None, ...],
-            og.nodes - e2[None, ...],
-            og.nodes - ed[None, ...],
+            [-1, -1],
+            [0, -1],
+            [1, -1],
+            [-1, 0],
+            [1, 0],
+            [-1, 1],
+            [0, 1],
+            [1, 1],
         ]
-    )  # (6N, 2)
+    )
+
+    candidates = og.nodes[:, None, ...] + offsets[None, ...]
+    candidates = candidates.view(-1, 2)
 
     candidates_in_graph = torch.all(
         candidates[:, None, ...] == og.nodes[None, ...], dim=2
-    ).any(dim=1)  # (6N,)
+    ).any(dim=1)
 
-    return candidates[~candidates_in_graph]
+    border = candidates[~candidates_in_graph]
+
+    if border.numel() == 0:
+        return border
+
+    return torch.unique(border, dim=0)
 
 
 def evolve(og: OG, bg: BG):
