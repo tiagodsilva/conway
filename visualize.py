@@ -1,5 +1,6 @@
 import os
 import time
+from enum import Enum
 
 import imageio.v2 as imageio
 import numpy as np
@@ -18,6 +19,24 @@ console = Console()
 ALIVE_CHAR = "O"
 DEAD_CHAR = "\u00b7"
 PADDING = 2
+
+
+class SeedPattern(Enum):
+    GLIDERS = "0,0 1,1 2,-1 2,0 2,1 10,5 11,6 12,4 12,5 12,6 20,10 21,11 22,9 22,10 22,11"
+    BLINKER = "0,0 1,0 2,0"
+    TOAD = "0,1 1,0 1,1 2,1 3,0 3,1"
+    BEACON = "0,0 1,0 2,0 2,1 3,1 3,2 4,2 4,3 5,2 5,3"
+    PULSAR = "0,1 0,2 0,3 1,-1 1,4 2,-1 2,4 3,0 3,1 3,2 3,3 4,-1 4,4 5,-1 5,4 6,1 6,2 6,3"
+    GOSPER_GUN = (
+        "0,0 1,0 0,1 1,1 "
+        "10,-1 14,-1 10,0 11,0 12,0 13,0 14,0 15,0 16,0 17,0 20,-1 20,0 20,1 21,-2 21,2 "
+        "22,-3 22,3 23,-1 23,0 23,1 24,0 "
+        "34,-2 34,-1 35,-2 35,-1"
+    )
+
+    @property
+    def coordinates(self) -> str:
+        return self.value
 
 
 def render_frame(
@@ -74,16 +93,13 @@ def frame_to_image(
     return np.kron(grid, np.ones((pixel_size, pixel_size), dtype=np.uint8))
 
 
-GLIDERS = "0,0 1,1 2,-1 2,0 2,1 10,5 11,6 12,4 12,5 12,6 20,10 21,11 22,9 22,10 22,11"
-
-
 @app.command()
 def main(
-    seed: str = typer.Option(
-        GLIDERS,
+    seed: SeedPattern = typer.Option(
+        SeedPattern.GLIDERS,
         "--seed",
         "-s",
-        help="Comma-separated coordinate pairs (x,y format)",
+        help=f"Seed pattern: {', '.join(p.name for p in SeedPattern)} or custom coordinates",
     ),
     iterations: int = typer.Option(
         2**31 - 1,
@@ -100,11 +116,15 @@ def main(
     gif: str | None = typer.Option(
         None, "--gif", "-f", help="Filename to save GIF (saved in figures/)"
     ),
+    random: bool = typer.Option(
+        False, "--random", "-r", help="Use random seed nodes"
+    ),
 ) -> None:
+    seed_coords = seed.coordinates if isinstance(seed, SeedPattern) else seed
     seed_nodes = torch.tensor(
         [
             [int(x), int(y)]
-            for pair in seed.split()
+            for pair in seed_coords.split()
             for x, y in [pair.split(",")]
         ]
     )
@@ -120,10 +140,11 @@ def main(
         os.makedirs("figures", exist_ok=True)
         frames.append(frame_to_image(og, grid_size, offset))
 
+    pattern_name = seed.name if isinstance(seed, SeedPattern) else "Custom"
     with Live(
         Panel(
             render_frame(og, grid_size, offset),
-            title="Conway's Game of Life",
+            title=f"Conway's Game of Life - {pattern_name}",
             border_style="blue",
         ),
         console=console,
@@ -131,13 +152,13 @@ def main(
         transient=False,
     ) as live:
         for i in range(iterations):
-            og, bg = evolve(og, bg)
+            og, bg = evolve(og, bg, random=random)
             if gif:
                 frames.append(frame_to_image(og, grid_size, offset))
             live.update(
                 Panel(
                     render_frame(og, grid_size, offset),
-                    title=f"Conway's Game of Life (iter {i + 1})",
+                    title=f"Conway's Game of Life - {pattern_name} (iter {i + 1})",
                     border_style="blue",
                 )
             )
@@ -153,5 +174,3 @@ def main(
 
 if __name__ == "__main__":
     app()
-
-# Built by OpenCode

@@ -70,18 +70,26 @@ def get_border(og: OG):
     return torch.unique(border, dim=0)
 
 
-def evolve(og: OG, bg: BG):
+def randint_if_random(size: torch.Size, random: bool = False):
+    if random:
+        return torch.randint(0, 2, size, dtype=torch.bool)
+    return torch.ones(size, dtype=torch.bool)
+
+
+def evolve(og: OG, bg: BG, random: bool = False):
     # This creates the next generation of Conway's game of life.
 
     # First: check which nodes should be added
     n_neigh_bg = count_neighbors(bg.nodes, og.nodes)
 
     # Fourth rule: If n_neigh == 3, becomes alive.
-    nodes_born = bg.nodes[n_neigh_bg == 3]
+    dice_throw = randint_if_random(n_neigh_bg.size(), random)
+    nodes_born = bg.nodes[(n_neigh_bg == 3) & dice_throw]
 
     # First and third rules: check which nodes will die
     n_neigh_og = count_neighbors(og.nodes, og.nodes)
-    should_die = (n_neigh_og < 2) | (n_neigh_og > 3)
+    dice_throw = randint_if_random(n_neigh_og.size(), random)
+    should_die = ((n_neigh_og < 2) | (n_neigh_og > 3)) & dice_throw
 
     # Second rule: the other nodes survive
     remaining_nodes = torch.vstack([og.nodes[~should_die], nodes_born])
@@ -93,7 +101,9 @@ def evolve(og: OG, bg: BG):
     return og, bg
 
 
-def run(seed: torch.Tensor, iterations: int):
+def run(seed: torch.Tensor, iterations: int, rng: int = 42):
+    torch.random.manual_seed(rng)
+
     og = OG(nodes=seed)
     bg = BG(nodes=get_border(og))
 
