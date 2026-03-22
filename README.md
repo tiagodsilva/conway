@@ -11,6 +11,10 @@ python visualize.py -n 20 -d 0.1 -f animation  # saves GIF to figures/
 
 ### Patterns
 
+**Gliders (random)**
+
+![Random Gliders](figures/random-gliders.gif)
+
 **Gliders**
 
 ![Gliders](figures/gliders.gif)

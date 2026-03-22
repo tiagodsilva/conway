@@ -119,7 +119,19 @@ def main(
     random: bool = typer.Option(
         False, "--random", "-r", help="Use random seed nodes"
     ),
+    manual_seed: int | None = typer.Option(
+        None,
+        "--manual-seed",
+        "-m",
+        help="Manual seed for random number generation",
+    ),
+    print_every: int = typer.Option(
+        1, "--print-every", "-p", help="Print progress every N iterations"
+    ),
 ) -> None:
+    if manual_seed is not None:
+        torch.manual_seed(manual_seed)
+
     seed_coords = seed.coordinates if isinstance(seed, SeedPattern) else seed
     seed_nodes = torch.tensor(
         [
@@ -152,7 +164,11 @@ def main(
         transient=False,
     ) as live:
         for i in range(iterations):
+            should_print = i % print_every == 0
             og, bg = evolve(og, bg, random=random)
+            if not should_print:
+                continue
+
             if gif:
                 frames.append(frame_to_image(og, grid_size, offset))
             live.update(
