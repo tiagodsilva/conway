@@ -9,4 +9,8 @@ python visualize.py
 python visualize.py -n 20 -d 0.1 -f animation  # saves GIF to figures/
 ```
 
-![Gliders](figures/gliders.gif)
+### Patterns
+
+![Gliders](figures/gliders.gif) ![Blinker](figures/blinker.gif) ![Toad](figures/toad.gif)
+
+![Beacon](figures/beacon.gif) ![Pulsar](figures/pulsar.gif)
